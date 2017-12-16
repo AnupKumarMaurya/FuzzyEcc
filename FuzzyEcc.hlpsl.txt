@@ -1,0 +1,166 @@
+role user( Ui, GWN, SNj  : agent,
+            Kui, Kgsnj : symmetric_key,
+            H, Opt1,Gen, Rep        : hash_func,
+            SND, RCV     : channel(dy) )
+
+played_by  Ui def= 
+     local 
+          State : nat,
+          IDi, IDsnj, PWi, Bi, SIGi, Taui, IPBi, P, Kui1, IPBi1, SIGi1, Rui, Aui, Bui, Wui, Alpha, Delta, Gamma, Ysnj, Tsnj, Tgwn, Xui, Xui1,TSui, Bi1, Tui : text            
+          const sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8, 
+                user_sensor_us, gateway_sensor_gs, gateway_user_gu :protocol_id
+init 
+    State := 0
+
+transition
+
+0. State = 0 /\ RCV (start) =|> 
+
+State' := 1 /\ SIGi' := Gen(Bi)
+            /\ IPBi' := H(IDi.PWi.H(SIGi'))  
+            /\ secret({PWi,Bi,SIGi'}, sub1, Ui) 
+            /\ SND (IDi.IPBi') 
+
+1. State = 1 /\ RCV(P.Aui.Bui.Wui) =|>
+
+State' := 2 /\ Rui' := new() 
+            /\ Tui' := new()
+	    
+           /\ secret(Rui', sub2, Ui)
+            /\ SIGi1' := Rep(Bi1.Taui) 
+            /\ IPBi1' := H(IDi.PWi.H(SIGi1'))
+            /\ Kui1'  := xor(Wui, H(IDi.IPBi)) 
+            /\ Xui' := Opt1(Rui'.P)  
+            /\ Xui1' := Opt1(Rui'.Kui1')
+            /\ secret(Xui1', sub3, {Ui, GWN})
+            /\ TSui' := xor(Tui',Xui1')
+            /\ Alpha' := H(IDi.IDsnj.Xui'.Xui1'.Tui)
+            /\ SND(IDi.IDsnj.Xui'.TSui'.Alpha')
+            /\ witness(Ui, GWN, gateway_user_gu, {TSui',Alpha'})
+            
+2. State = 2 /\ RCV(Delta'.Gamma'.Ysnj'.Tsnj'.xor(Tgwn'.Xui1')) =|>
+   State' := 3 /\ Rui' := new() 
+               /\ request(Ui,SNj, user_sensor_us, H(Opt1(Rui'.Ysnj)))
+
+end role
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+role gateway( Ui, GWN, SNj  : agent,
+            Kui, Kgsnj : symmetric_key,
+            H, Opt1, Gen, Rep        : hash_func,
+            SND, RCV     : channel(dy) )
+
+played_by  GWN def= 
+     local 
+          State : nat,
+          IDi, IDsnj, PWi, Bi, SIGi, Taui, IPBi, P, Kui1, IPBi1, SIGi1, Rui, Aui, Bui, Wui, Alpha, Beta, Delta, Gamma, Ysnj, Tsnj, Tgwn, Xui, Xui1, TUgwn, TGgwn, TSui, Tui, X : text 
+          
+          const sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8, 
+                user_sensor_us, gateway_sensor_gs, gateway_user_gu :protocol_id
+
+init 
+    State := 0
+
+transition
+
+1. State = 0 /\ RCV (IDi.IPBi') =|> 
+   State' := 1 /\ X' := new() 
+               /\ Kui' := Opt1(H(IDi.X').P)
+               /\ Aui' := xor(IPBi'.H(xor(IDi.X'))) 
+               /\ Bui' := H(IDi.IPBi'.xor(IDi.X'))
+               /\ secret(X',sub3, GWN)
+               /\ Wui' := xor(H(IDi.IPBi).Kui')  
+               /\ secret(Kui', sub5, {GWN,Ui}) 
+               /\ SND(P.Aui'.Bui'.Wui')
+
+1. State = 1 /\ RCV(IDi.IDsnj.Xui'.TSui'.Alpha') =|>
+   State' := 2 /\ Tgwn' :=new() 
+                 /\ request(GWN, Ui, gateway_user_gu, Alpha')
+                 /\ TUgwn' := xor(Tgwn', Xui1)  
+                 /\ TGgwn' := xor(Tgwn', Kgsnj)
+                 /\ Beta' := H(Kgsnj.IDi.Xui.Tgwn')
+                 /\ secret(Kgsnj, sub6, {GWN,SNj})                 
+                /\ witness(GWN, SNj, gateway_sensor_gs, Beta')
+                 /\ Gamma' := H(Xui.Tui.Tgwn')
+                 /\ witness(GWN, Ui, gateway_user_gu, Gamma')
+                 /\ SND(IDi.IDsnj.Beta'.Gamma'.Xui.TGgwn'.TUgwn')
+
+
+end role
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55
+role sensor( Ui, GWN, SNj  : agent,
+            Kui, Kgsnj : symmetric_key,
+            H, Opt1, Gen, Rep        : hash_func,
+            SND, RCV     : channel(dy) )
+
+played_by  SNj def= 
+     local 
+          State : nat,
+          IDi, IDsnj, PWi, Bi, SIGi, Taui, IPBi, P, Kui1, IPBi1, SIGi1, Rui, Aui, Bui, Wui, Alpha, Beta, Delta, Gamma, Ysnj, Tsnj, Tgwn, Xui, Xui1, Rsnj, TUgwn, TGgwn, Kusn, SKusn : text 
+          
+         const sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8, 
+                user_sensor_us, gateway_sensor_gs, gateway_user_gu :protocol_id     
+
+
+init 
+    State := 0
+
+transition
+
+1. State = 1 /\ RCV (IDi.IDsnj.Beta'.Gamma'.Xui'.TGgwn'.TUgwn') =|> 
+   State' := 2 /\ Rsnj' := new() 
+             /\ secret(Rsnj', sub7, SNj) 
+              /\ Tsnj' :=new() 
+              /\ Ysnj' := Opt1(Rsnj'.P)
+              /\ request(SNj, GWN, gateway_sensor_gs, Beta') 
+              /\ Kusn' := Opt1(Rsnj'.Xui')  
+              /\ secret(Kusn', sub8, {SNj,Ui})  
+              /\ SKusn' := H(Kusn'.Gamma'.Tsnj'.IDi.IDsnj)
+              /\ witness(SNj, Ui, user_sensor_us, Delta)
+              /\ SND(Delta.Gamma.Ysnj.Tsnj'.TUgwn')
+end role
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+role session(Ui,GWN,SNj :agent,
+              Kui, Kgsnj :symmetric_key,
+              H, Opt1, Gen, Rep        : hash_func)
+def= 
+    local GWNUi,RUi,GWNSNj,RSNj,GWNGWN,RGWN :channel(dy)
+composition
+    user(Ui, GWN, SNj, Kui,Kgsnj,H, Opt1,Gen, Rep,GWNUi, RUi)
+/\ sensor(Ui, GWN, SNj,Kui, Kgsnj, H, Opt1,Gen, Rep,GWNSNj, RSNj)
+/\ gateway(Ui, GWN, SNj, Kui, Kgsnj,H, Opt1,Gen, Rep, GWNGWN,RGWN)
+end role
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+role environment()
+def=
+     const ui, gwn, snj : agent,
+     kui,kgsnj,kig    : symmetric_key,
+     h, opt1, gen, rep        : hash_func,
+     user_sensor_us, gateway_sensor_gs, gateway_user_gu, sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8 : protocol_id
+
+intruder_knowledge = {ui,gwn,snj,kig}
+composition
+session(ui,snj,gwn,kui,kig,h, opt1, gen, rep )
+/\ session(ui,snj,gwn,kgsnj,kig,h, opt1, gen, rep )
+/\ session(ui,snj,gwn,kig,kgsnj,h, opt1, gen, rep )
+end role
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+goal
+   secrecy_of sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8
+   authentication_on user_sensor_us, gateway_sensor_gs, gateway_user_gu
+end goal
+environment()
